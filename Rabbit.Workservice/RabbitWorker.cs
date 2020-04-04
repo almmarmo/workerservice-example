@@ -13,7 +13,7 @@ namespace Rabbit.Workservice
         private const string EXCHANGE_NAME = "ENV_EXCHANGE";
         private const string ROUTINGKEY_NAME = "ENV_ROUNTINGKEY";
         private readonly ILogger<RabbitWorker> logger;
-        private ConnectionFactory factory;
+        private readonly ConnectionFactory factory;
         private IConnection connection;
 
         public RabbitWorker(ILogger<RabbitWorker> logger)
