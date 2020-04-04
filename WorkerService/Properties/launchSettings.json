@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "WorkerService": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development",
+        "ENV_EXCHANGE": "filas",
+        "ENV_WORKER_DELAY": "5000"
+      }
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
