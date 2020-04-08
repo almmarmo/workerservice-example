@@ -9,67 +9,89 @@ namespace Rabbit.Workservice
 {
     public class RabbitWorker : BackgroundService
     {
-        private const string WORKER_DELAY = "ENV_WORKER_DELAY";
-        private const string EXCHANGE_NAME = "ENV_EXCHANGE";
-        private const string ROUTINGKEY_NAME = "ENV_ROUNTINGKEY";
         private readonly ILogger<RabbitWorker> logger;
         private readonly ConnectionFactory factory;
+        private readonly EnvironmentVariables environmentVariables;
         private IConnection connection;
 
         public RabbitWorker(ILogger<RabbitWorker> logger)
         {
+            environmentVariables = new EnvironmentVariables();
             factory = new ConnectionFactory();
             this.logger = logger;
 
-            factory.HostName = "192.168.99.100";
-
+            factory.HostName = environmentVariables.BrokerHost;
+            logger.LogInformation("Worker started.");
         }
 
         private void ConnectBroker()
         {
-            if(connection == null || !connection.IsOpen)
+            if (connection == null || !connection.IsOpen)
+            {
                 connection = factory.CreateConnection();
+                logger.LogInformation("Connection with broker established.");
+            }
+        }
+
+        public void Execute()
+        {
+            Valid();
+            ConnectBroker();
+            SendMessage();
+            CloseConnection();
+        }
+
+        private void Valid()
+        {
+            logger.LogInformation("Delay: {delay} ms", environmentVariables.Delay);
+            logger.LogInformation("Exchange: {0}", environmentVariables.Exchange);
+            logger.LogInformation("Routing Key: {0}", environmentVariables.RoutingKey);
+
+            if (String.IsNullOrEmpty(environmentVariables.Exchange))
+                throw new ArgumentException("No exchange defined. Verify environment variable ENV_EXCHANGE", "ENV_EXCHANGE");
+        }
+
+        private void CloseConnection()
+        {
+            connection.Close();
+            connection.Dispose();
+            logger.LogInformation("Connection closed.");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            logger.LogInformation("Starting worker...");
+            Valid();
 
-            string workerDelay = Environment.GetEnvironmentVariable(WORKER_DELAY);
-            int delay = 1000;
-            if (!String.IsNullOrEmpty(workerDelay))
-                delay = int.Parse(workerDelay);
-            string exchange = Environment.GetEnvironmentVariable(EXCHANGE_NAME);
-            string routingKey = Environment.GetEnvironmentVariable(ROUTINGKEY_NAME) ?? "";
-
-            logger.LogInformation("Delay: {delay} ms", delay);
-            logger.LogInformation("Exchange: {0}", exchange);
-            logger.LogInformation("Routing Key: {0}", routingKey);
-
-            if (String.IsNullOrEmpty(exchange))
-                throw new ArgumentException("No exchange defined. Verify environment variable ENV_EXCHANGE", "ENV_EXCHANGE");
+            ConnectBroker();
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                ConnectBroker();
-
-                IModel channel = connection.CreateModel();
-                byte[] message = System.Text.Encoding.UTF8.GetBytes($"{{\"date\":\"{DateTime.Now}\" \"name\":\"teste de fila\"}}");
-                var properties = channel.CreateBasicProperties();
-                properties.DeliveryMode = 2;
-                properties.ContentType = "application/json";
-                channel.BasicPublish(exchange, routingKey, properties, message);
-
-                logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-
-                channel.Close();
-                channel.Dispose();
-
-                await Task.Delay(delay, stoppingToken);
+                SendMessage();
+                await Task.Delay(environmentVariables.Delay, stoppingToken);
             }
+        }
 
-            connection.Close();
-            connection.Dispose();
+        public override Task StopAsync(CancellationToken cancellationToken)
+        {
+            CloseConnection();
+            return base.StopAsync(cancellationToken);
+        }
+
+        private void SendMessage()
+        {
+            IModel channel = connection.CreateModel();
+            byte[] message = System.Text.Encoding.UTF8.GetBytes($"{{\"date\":\"{DateTime.Now}\" \"name\":\"teste de fila\"}}");
+            var properties = channel.CreateBasicProperties();
+            properties.DeliveryMode = 2;
+            properties.ContentType = "application/json";
+            channel.BasicPublish(environmentVariables.Exchange, environmentVariables.RoutingKey, properties, message);
+
+            logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+
+            channel.Close();
+            channel.Dispose();
+
+            logger.LogInformation("Message sended.");
         }
     }
 }

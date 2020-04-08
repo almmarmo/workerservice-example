@@ -3,6 +3,7 @@
     "WorkerService": {
       "commandName": "Project",
       "environmentVariables": {
+        "ENV_BROKER_HOST": "localhost",
         "DOTNET_ENVIRONMENT": "Development",
         "ENV_EXCHANGE": "filas",
         "ENV_WORKER_DELAY": "5000"

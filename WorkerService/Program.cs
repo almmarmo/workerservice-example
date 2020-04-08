@@ -12,7 +12,17 @@ namespace WorkerService
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            var env = new EnvironmentVariables();
+            var host = CreateHostBuilder(args).Build();
+            
+            if(env.Delay > 0)
+                host.Run();
+            else
+            {
+                var logger = host.Services.GetService<Microsoft.Extensions.Logging.ILogger<RabbitWorker>>();
+                var worker = new RabbitWorker(logger);
+                worker.Execute();
+            }
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
