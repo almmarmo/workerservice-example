@@ -1,0 +1,23 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: workerservice-cron
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: workerservice-container
+            image: almmarmo/workerservice
+            ports:
+             - containerPort: 5672
+            env:
+              - name: ENV_BROKER_HOST
+                value: "workerservice-svc"
+              - name: ENV_EXCHANGE
+                value: "filas"
+              - name: ENV_WORKER_DELAY
+                value: "0"
+          restartPolicy: OnFailure

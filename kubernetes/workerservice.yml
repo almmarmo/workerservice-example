@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: workerservice-pod
+spec:
+  containers:
+  - name: workerservice-container
+    image: almmarmo/workerservice
+    ports:
+     - containerPort: 5672
+    env:
+      - name: ENV_BROKER_HOST
+        value: "workerservice-svc"
+      - name: ENV_EXCHANGE
+        value: "filas"
+      - name: ENV_WORKER_DELAY
+        value: "0"
